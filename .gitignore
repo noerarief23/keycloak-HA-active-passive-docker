@@ -1,0 +1,33 @@
+# Environment files with actual passwords
+.env
+.env.local
+.env.*.local
+
+# Docker volumes and data
+postgres-*-data/
+postgres-*-archive/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+backup-*.sql
