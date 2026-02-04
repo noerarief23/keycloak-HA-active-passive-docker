@@ -30,6 +30,12 @@ services:
         ipv4_address: 172.20.0.20
     ports:
       - "5433:5432"
+    # NOTE: The extra_hosts mapping is for cross-server deployments where the primary
+    # PostgreSQL instance runs on a different physical host. PRIMARY_SERVER_IP must
+    # point to the primary server's IP address. If testing locally with both primary
+    # and replica on the same Docker host/network, this entry may conflict with
+    # Docker's built-in DNS. For single-host testing, consider using a shared network
+    # or removing this extra_hosts entry via docker-compose.override.yml.
     extra_hosts:
       - "postgres-primary:${PRIMARY_SERVER_IP}"
     healthcheck:
@@ -80,6 +86,11 @@ networks:
     driver: bridge
     ipam:
       config:
+        # NOTE: Both primary and replica use the same subnet (172.20.0.0/16).
+        # This configuration assumes deployment on separate physical servers.
+        # If running both on the same host for testing, there will be network
+        # conflicts. For single-host testing, use different subnets (e.g.,
+        # 172.21.0.0/16 for replica) or use a docker-compose.override.yml.
         - subnet: 172.20.0.0/16
 
 volumes:

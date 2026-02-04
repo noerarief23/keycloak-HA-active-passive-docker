@@ -1,5 +1,8 @@
 #!/bin/bash
 # Health check script for monitoring the HA setup
+# NOTE: This script assumes both containers are accessible from the same host.
+# For separate servers (Server A and Server B), run this script on each server
+# individually or use remote Docker connections.
 
 echo "========================================="
 echo "Keycloak HA Health Check"

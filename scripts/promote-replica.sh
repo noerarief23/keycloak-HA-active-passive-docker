@@ -24,11 +24,24 @@ echo "Step 1: Promoting PostgreSQL replica..."
 # Create the promotion trigger file
 docker exec postgres-replica touch /tmp/promote_trigger
 
-# Wait for promotion to complete
-sleep 5
+# Wait for promotion to complete with polling
+echo "Waiting for PostgreSQL promotion to complete..."
+MAX_WAIT_SECONDS=30
+SLEEP_INTERVAL=2
+ELAPSED=0
+PROMOTED=0
+
+while [ "$ELAPSED" -lt "$MAX_WAIT_SECONDS" ]; do
+    if docker exec postgres-replica psql -U postgres -t -c "SELECT pg_is_in_recovery();" 2>/dev/null | grep -q "^[[:space:]]*f[[:space:]]*$"; then
+        PROMOTED=1
+        break
+    fi
+    sleep "$SLEEP_INTERVAL"
+    ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
+done
 
 # Check if promotion was successful
-if docker exec postgres-replica psql -U postgres -c "SELECT pg_is_in_recovery();" | grep -q "f"; then
+if [ "$PROMOTED" -eq 1 ]; then
     echo "✓ PostgreSQL replica successfully promoted to primary!"
 else
     echo "✗ Promotion failed. PostgreSQL is still in recovery mode."
@@ -41,12 +54,24 @@ echo "Step 2: Starting Keycloak on the new primary server..."
 # Start Keycloak with the manual profile
 docker compose -f docker-compose-replica.yml --profile manual up -d keycloak-replica
 
-# Wait for Keycloak to be ready
+# Wait for Keycloak to be ready (up to 60 seconds to match health check start_period)
 echo "Waiting for Keycloak to start..."
-sleep 10
+MAX_WAIT_SECONDS=60
+SLEEP_INTERVAL=5
+ELAPSED=0
+KEYCLOAK_READY=0
+
+while [ "$ELAPSED" -lt "$MAX_WAIT_SECONDS" ]; do
+    if docker exec keycloak-replica curl -sf http://localhost:8080/health/ready > /dev/null 2>&1; then
+        KEYCLOAK_READY=1
+        break
+    fi
+    sleep "$SLEEP_INTERVAL"
+    ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
+done
 
 # Check Keycloak health
-if docker exec keycloak-replica curl -sf http://localhost:8080/health/ready > /dev/null 2>&1; then
+if [ "$KEYCLOAK_READY" -eq 1 ]; then
     echo "✓ Keycloak is running and ready!"
 else
     echo "⚠ Keycloak may still be starting. Check logs with: docker logs keycloak-replica"

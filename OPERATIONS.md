@@ -46,16 +46,13 @@ BACKUP_FILE="$BACKUP_DIR/keycloak_backup_$DATE.sql"
 
 mkdir -p $BACKUP_DIR
 
-# Backup from primary
+# Backup from primary (custom format already includes compression)
 docker exec postgres-primary pg_dump -U postgres -Fc keycloak > $BACKUP_FILE
 
-# Compress
-gzip $BACKUP_FILE
-
 # Keep only last 30 days
-find $BACKUP_DIR -name "*.gz" -mtime +30 -delete
+find $BACKUP_DIR -name "*.sql" -mtime +30 -delete
 
-echo "Backup completed: ${BACKUP_FILE}.gz"
+echo "Backup completed: ${BACKUP_FILE}"
 ```
 
 **Test restore:**
@@ -86,11 +83,13 @@ docker exec postgres-primary psql -U postgres -c \
   "SELECT datname, numbackends, xact_commit, xact_rollback, blks_read, blks_hit 
    FROM pg_stat_database WHERE datname = 'keycloak';"
 
-# Top queries by total time
-docker exec postgres-primary psql -U postgres -c \
-  "SELECT query, calls, total_exec_time, mean_exec_time 
-   FROM pg_stat_statements 
-   ORDER BY total_exec_time DESC LIMIT 10;"
+# Top queries by total time (requires pg_stat_statements extension)
+# To enable: Add 'shared_preload_libraries = pg_stat_statements' to postgresql.conf
+# and run 'CREATE EXTENSION pg_stat_statements;' in the database
+# docker exec postgres-primary psql -U postgres -c \
+#   "SELECT query, calls, total_exec_time, mean_exec_time 
+#    FROM pg_stat_statements 
+#    ORDER BY total_exec_time DESC LIMIT 10;"
 
 # Table sizes
 docker exec postgres-primary psql -U postgres -c \

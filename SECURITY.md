@@ -445,17 +445,30 @@ KEYCLOAK_DB_PASSWORD=$(openssl rand -base64 32)
 KEYCLOAK_ADMIN_PASSWORD=$(openssl rand -base64 32)
 
 # Save to secure location (not in repo)
-mkdir -p /secure/keycloak-ha
-cat > /secure/keycloak-ha/.env << EOF
+# Note: The directory path may require sudo for creation, or use a user-accessible path
+# such as $HOME/.keycloak-ha/ instead of /secure/keycloak-ha
+if [ -w /secure ] || sudo -n true 2>/dev/null; then
+    sudo mkdir -p /secure/keycloak-ha
+    sudo bash -c "cat > /secure/keycloak-ha/.env << EOF
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+REPLICATION_PASSWORD=$REPLICATION_PASSWORD
+KEYCLOAK_DB_PASSWORD=$KEYCLOAK_DB_PASSWORD
+KEYCLOAK_ADMIN_PASSWORD=$KEYCLOAK_ADMIN_PASSWORD
+EOF"
+    sudo chmod 600 /secure/keycloak-ha/.env
+    echo "Passwords generated and saved to /secure/keycloak-ha/.env"
+else
+    # Fallback to user home directory
+    mkdir -p "$HOME/.keycloak-ha"
+    cat > "$HOME/.keycloak-ha/.env" << EOF
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 REPLICATION_PASSWORD=$REPLICATION_PASSWORD
 KEYCLOAK_DB_PASSWORD=$KEYCLOAK_DB_PASSWORD
 KEYCLOAK_ADMIN_PASSWORD=$KEYCLOAK_ADMIN_PASSWORD
 EOF
-
-chmod 600 /secure/keycloak-ha/.env
-
-echo "Passwords generated and saved to /secure/keycloak-ha/.env"
+    chmod 600 "$HOME/.keycloak-ha/.env"
+    echo "Passwords generated and saved to $HOME/.keycloak-ha/.env"
+fi
 
 # Configure firewall
 echo "Configuring firewall..."
