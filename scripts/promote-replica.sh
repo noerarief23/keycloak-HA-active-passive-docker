@@ -32,7 +32,8 @@ ELAPSED=0
 PROMOTED=0
 
 while [ "$ELAPSED" -lt "$MAX_WAIT_SECONDS" ]; do
-    if docker exec postgres-replica psql -U postgres -t -c "SELECT pg_is_in_recovery();" 2>/dev/null | grep -q "^[[:space:]]*f[[:space:]]*$"; then
+    # Check if PostgreSQL is out of recovery mode (returns 't' for true when NOT in recovery)
+    if docker exec postgres-replica psql -U postgres -t -A -c "SELECT NOT pg_is_in_recovery();" 2>/dev/null | grep -q "^t$"; then
         PROMOTED=1
         break
     fi

@@ -23,7 +23,7 @@ sleep 5
 
 # Check if data exists on replica
 echo "Step 4: Verifying data on replica..."
-RESULT=$(docker exec postgres-replica psql -U postgres -d keycloak -t -c "SELECT test_data FROM replication_test WHERE test_data = '${TEST_DATA}';" 2>/dev/null | xargs)
+RESULT=$(docker exec postgres-replica psql -U postgres -d keycloak -t -v test_data="$TEST_DATA" -c "SELECT test_data FROM replication_test WHERE test_data = :'test_data';" 2>/dev/null | xargs)
 
 if [ "$RESULT" = "$TEST_DATA" ]; then
     echo "✓ Replication is working correctly!"
