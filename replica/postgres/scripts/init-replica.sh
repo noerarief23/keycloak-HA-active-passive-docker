@@ -19,11 +19,16 @@ done
 
 echo "Primary server is ready. Starting base backup..."
 
-# Remove existing data directory if it exists
-if [ -d "$PGDATA" ]; then
-    echo "Removing existing data directory..."
-    rm -rf "$PGDATA"/*
+# Stop the temporary postgres instance started by docker-entrypoint
+if [ -f "$PGDATA/postmaster.pid" ]; then
+    echo "Stopping temporary postgres instance..."
+    pg_ctl -D "$PGDATA" stop -m fast || true
+    sleep 2
 fi
+
+# Remove existing data directory contents
+echo "Removing existing data directory contents..."
+rm -rf "$PGDATA"/*
 
 # Perform base backup from primary
 PGPASSWORD=${REPLICATION_PASSWORD} pg_basebackup \

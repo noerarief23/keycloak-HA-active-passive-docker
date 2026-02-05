@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres-replica:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: postgres-replica
     hostname: postgres-replica
     environment:
@@ -48,7 +48,7 @@ services:
     build:
       context: ./common/keycloak
       dockerfile: Dockerfile
-    image: keycloak-ha-replica:23.0
+    image: keycloak-ha-replica:26.5.2
     container_name: keycloak-replica
     hostname: keycloak-replica
     environment:

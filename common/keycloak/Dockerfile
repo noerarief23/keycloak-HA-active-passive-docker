@@ -1,4 +1,4 @@
-FROM quay.io/keycloak/keycloak:23.0 as builder
+FROM quay.io/keycloak/keycloak:26.5.2 as builder
 
 # Enable health and metrics support
 ENV KC_HEALTH_ENABLED=true
@@ -12,7 +12,7 @@ WORKDIR /opt/keycloak
 # Build Keycloak with PostgreSQL support
 RUN /opt/keycloak/bin/kc.sh build
 
-FROM quay.io/keycloak/keycloak:23.0
+FROM quay.io/keycloak/keycloak:26.5.2
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
 # Configure runtime settings for HA deployment

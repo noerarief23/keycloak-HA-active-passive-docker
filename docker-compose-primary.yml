@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres-primary:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: postgres-primary
     hostname: postgres-primary
     environment:
@@ -34,7 +34,7 @@ services:
     build:
       context: ./common/keycloak
       dockerfile: Dockerfile
-    image: keycloak-ha-primary:23.0
+    image: keycloak-ha-primary:26.5.2
     container_name: keycloak-primary
     hostname: keycloak-primary
     environment:
@@ -48,6 +48,8 @@ services:
       - KC_HTTP_ENABLED=true
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
+      - KC_PROXY=edge
+      - KC_HOSTNAME_PORT=8443
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
     command: start --optimized
