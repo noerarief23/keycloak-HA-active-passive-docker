@@ -31,7 +31,10 @@ services:
       retries: 5
 
   keycloak-primary:
-    image: quay.io/keycloak/keycloak:23.0
+    build:
+      context: ./primary/keycloak
+      dockerfile: Dockerfile
+    image: keycloak-ha:23.0
     container_name: keycloak-primary
     hostname: keycloak-primary
     environment:
