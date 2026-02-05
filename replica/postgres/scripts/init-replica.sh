@@ -42,20 +42,3 @@ echo "Base backup completed successfully!"
 # so this file should already exist. No need to create it manually.
 
 echo "Replica server initialized successfully!"
-
-# Create haproxy_check user for HAProxy health checks
-# This needs to be done after the replica is promoted to primary during failover
-# For now, we'll create a script that can be run manually after promotion
-cat > /tmp/create-haproxy-user.sql <<-EOSQL
--- Create haproxy_check user for health checks
-DO \$\$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'haproxy_check') THEN
-        CREATE USER haproxy_check WITH LOGIN;
-    END IF;
-END
-\$\$;
-EOSQL
-
-echo "Note: After promoting replica to primary, run:"
-echo "  psql -U postgres -f /tmp/create-haproxy-user.sql"
