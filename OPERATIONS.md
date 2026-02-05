@@ -10,6 +10,9 @@ This guide covers routine operations, maintenance tasks, and best practices for 
 # Run automated health check
 ./scripts/health-check.sh
 
+# Check HAProxy backend status (if using HAProxy)
+./haproxy/scripts/check-backends.sh
+
 # Check replication lag
 docker exec postgres-replica psql -U postgres -c \
   "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) AS lag_seconds;"
@@ -27,6 +30,7 @@ docker system df
 
 Expected results:
 - Health check shows all services running and healthy
+- HAProxy shows all backends UP (if deployed)
 - Replication lag < 5 seconds
 - Replication state = "streaming"
 - Disk usage < 80%
@@ -123,6 +127,25 @@ docker exec postgres-primary psql -U postgres -c \
   "DROP TABLE health_check;"
 ```
 
+### HAProxy Maintenance (5 minutes)
+
+If using HAProxy load balancer:
+
+```bash
+# Check HAProxy stats
+curl -u admin:password http://haproxy-ip:8404/stats
+
+# View HAProxy logs
+docker logs haproxy-lb --tail 100
+
+# Check SSL certificate expiration
+openssl x509 -in haproxy/certs/keycloak.pem -noout -enddate
+
+# Validate configuration
+docker run --rm -v $(pwd)/haproxy:/usr/local/etc/haproxy:ro \
+  haproxy:2.9-alpine haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+```
+
 ## Monthly Maintenance
 
 ### Update Docker Images (30 minutes)
@@ -134,8 +157,14 @@ docker exec postgres-primary psql -U postgres -c \
 docker compose -f docker-compose-primary.yml pull
 docker compose -f docker-compose-replica.yml pull
 
+# If using HAProxy
+docker compose -f docker-compose-lb.yml pull
+
 # Backup before updating
 ./backup-database.sh
+
+# Update HAProxy first (minimal downtime)
+docker compose -f docker-compose-lb.yml up -d
 
 # Update primary (requires downtime)
 docker compose -f docker-compose-primary.yml up -d

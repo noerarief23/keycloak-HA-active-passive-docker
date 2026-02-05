@@ -14,7 +14,15 @@ This repository provides a production-ready Active/Passive High Availability set
 - Keycloak (Standby) - Stopped by default, activated during failover
 - PostgreSQL Replica - Read-only replica with streaming replication
 
+**Server C (Load Balancer) - Optional:**
+- HAProxy - Load balancer and single entry point
+- Automatic failover detection
+- SSL/TLS termination
+- Health monitoring and statistics
+
 ### Architecture Diagram
+
+#### Without Load Balancer (Basic Setup)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -39,6 +47,39 @@ This repository provides a production-ready Active/Passive High Availability set
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+#### With HAProxy Load Balancer (Recommended for Production)
+
+```
+                    Internet/Clients
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │   Server C      │
+                  │   HAProxy       │
+                  │                 │
+                  │  HTTP: 80/443   │
+                  │  PG: 5432       │
+                  │  Stats: 8404    │
+                  └────────┬────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+        ▼                  ▼                  ▼
+┌───────────────┐  ┌───────────────┐  ┌──────────────┐
+│  Server A     │  │  Server B     │  │ Health       │
+│  (Primary)    │  │  (Replica)    │  │ Checks       │
+│               │  │               │  │              │
+│ Keycloak:8080 │  │ Keycloak:8081 │  │ Every 5s     │
+│ PostgreSQL    │  │ PostgreSQL    │  │ (Keycloak)   │
+│ :5432         │  │ :5433         │  │              │
+│               │  │               │  │ Every 3s     │
+│ [ACTIVE]      │  │ [STANDBY]     │  │ (PostgreSQL) │
+└───────┬───────┘  └───────┬───────┘  └──────────────┘
+        │                  │
+        └──────────────────┘
+         Streaming Replication
+```
+
 ## Features
 
 - ✅ PostgreSQL Streaming Replication
@@ -49,6 +90,10 @@ This repository provides a production-ready Active/Passive High Availability set
 - ✅ Replication verification tools
 - ✅ Production-ready configuration
 - ✅ Network isolation with custom bridge networks
+- ✅ HAProxy load balancer with automatic failover
+- ✅ SSL/TLS termination and certificate management
+- ✅ Built-in monitoring and statistics dashboard
+- ✅ Prometheus metrics export
 
 ## Prerequisites
 
@@ -129,6 +174,30 @@ The replica will automatically:
 ```bash
 ./scripts/verify-replication.sh
 ```
+
+### 6. Deploy HAProxy Load Balancer (Optional but Recommended)
+
+For production deployments, deploy HAProxy on Server C:
+
+```bash
+# On Server C
+cd haproxy/scripts
+./deploy-haproxy.sh
+```
+
+The deployment script will:
+- Check prerequisites
+- Generate SSL certificates (if needed)
+- Validate configuration
+- Start HAProxy container
+- Verify health checks
+
+Access HAProxy:
+- **Stats Page:** http://server-c-ip:8404/stats
+- **Keycloak:** https://server-c-ip/
+- **PostgreSQL:** server-c-ip:5432
+
+For detailed HAProxy setup, see [HAPROXY.md](HAPROXY.md)
 
 ## Configuration Details
 

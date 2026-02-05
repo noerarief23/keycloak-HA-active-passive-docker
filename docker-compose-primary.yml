@@ -32,9 +32,9 @@ services:
 
   keycloak-primary:
     build:
-      context: ./primary/keycloak
+      context: ./common/keycloak
       dockerfile: Dockerfile
-    image: keycloak-ha:23.0
+    image: keycloak-ha-primary:23.0
     container_name: keycloak-primary
     hostname: keycloak-primary
     environment:
