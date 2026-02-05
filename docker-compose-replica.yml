@@ -45,7 +45,10 @@ services:
       retries: 5
 
   keycloak-replica:
-    image: quay.io/keycloak/keycloak:23.0
+    build:
+      context: ./replica/keycloak
+      dockerfile: Dockerfile
+    image: keycloak-ha:23.0
     container_name: keycloak-replica
     hostname: keycloak-replica
     environment:

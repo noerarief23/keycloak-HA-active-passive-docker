@@ -19,16 +19,16 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         END IF;
     END
     \$\$;
+EOSQL
 
-    -- Create Keycloak database and user
-    DO \$\$
-    BEGIN
-        IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak') THEN
-            CREATE DATABASE keycloak;
-        END IF;
-    END
-    \$\$;
+# Create Keycloak database (must be outside DO block)
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    SELECT 'CREATE DATABASE keycloak'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+EOSQL
 
+# Create Keycloak user and grant privileges
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
@@ -36,8 +36,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         END IF;
     END
     \$\$;
+EOSQL
 
+# Grant privileges on keycloak database
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "keycloak" <<-EOSQL
     GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+    GRANT ALL PRIVILEGES ON SCHEMA public TO keycloak;
 EOSQL
 
 # Create replication slot
@@ -55,3 +59,17 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 EOSQL
 
 echo "Primary server initialized successfully!"
+
+# Create haproxy_check user for HAProxy health checks
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    -- Create haproxy_check user for health checks
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'haproxy_check') THEN
+            CREATE USER haproxy_check WITH LOGIN;
+        END IF;
+    END
+    \$\$;
+EOSQL
+
+echo "HAProxy health check user created successfully!"
