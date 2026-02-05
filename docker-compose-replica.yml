@@ -46,9 +46,9 @@ services:
 
   keycloak-replica:
     build:
-      context: ./replica/keycloak
+      context: ./common/keycloak
       dockerfile: Dockerfile
-    image: keycloak-ha:23.0
+    image: keycloak-ha-replica:23.0
     container_name: keycloak-replica
     hostname: keycloak-replica
     environment:

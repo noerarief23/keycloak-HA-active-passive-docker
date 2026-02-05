@@ -21,7 +21,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     \$\$;
 EOSQL
 
-# Create Keycloak database (must be outside DO block)
+# Create Keycloak database
+# Using \gexec instead of DO block because CREATE DATABASE cannot be run inside a transaction block
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     SELECT 'CREATE DATABASE keycloak'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
@@ -41,7 +42,7 @@ EOSQL
 # Grant privileges on keycloak database
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "keycloak" <<-EOSQL
     GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
-    GRANT ALL PRIVILEGES ON SCHEMA public TO keycloak;
+    GRANT USAGE, CREATE ON SCHEMA public TO keycloak;
 EOSQL
 
 # Create replication slot
