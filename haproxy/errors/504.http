@@ -1,0 +1,40 @@
+HTTP/1.1 504 Gateway Timeout
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-cache
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>504 Gateway Timeout</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 50px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #9b59b6; margin: 0 0 20px 0; }
+        .error-code { font-size: 72px; font-weight: bold; color: #9b59b6; margin: 0; }
+        p { color: #666; line-height: 1.6; }
+        .details { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .retry-btn { display: inline-block; background: #3498db; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; margin-top: 20px; }
+        .retry-btn:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-code">504</div>
+        <h1>Gateway Timeout</h1>
+        <p>The load balancer did not receive a timely response from the backend server.</p>
+        <div class="details">
+            <strong>What this means:</strong>
+            <ul>
+                <li>The backend server is taking too long to respond</li>
+                <li>The server may be overloaded</li>
+                <li>Network latency issues</li>
+            </ul>
+        </div>
+        <p>Please try again in a few moments.</p>
+        <a href="javascript:location.reload()" class="retry-btn">Try Again</a>
+    </div>
+</body>
+</html>

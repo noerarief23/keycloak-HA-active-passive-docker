@@ -1,0 +1,37 @@
+HTTP/1.1 403 Forbidden
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-cache
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 Forbidden</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 50px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #e67e22; margin: 0 0 20px 0; }
+        .error-code { font-size: 72px; font-weight: bold; color: #e67e22; margin: 0; }
+        p { color: #666; line-height: 1.6; }
+        .details { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-code">403</div>
+        <h1>Forbidden</h1>
+        <p>You don't have permission to access this resource.</p>
+        <div class="details">
+            <strong>Possible reasons:</strong>
+            <ul>
+                <li>Access denied by security policy</li>
+                <li>Authentication required</li>
+                <li>IP address blocked</li>
+            </ul>
+        </div>
+        <p>If you believe this is an error, please contact the administrator.</p>
+    </div>
+</body>
+</html>

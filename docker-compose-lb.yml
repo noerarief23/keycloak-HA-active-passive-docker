@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: haproxy-lb
+    hostname: haproxy-lb
+    
+    # Network mode: host for direct access to backend servers
+    # For multi-server deployment, use bridge mode and configure extra_hosts
+    network_mode: host
+    
+    # Environment variables for stats authentication
+    environment:
+      - HAPROXY_STATS_USER=${HAPROXY_STATS_USER:-admin}
+      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme}
+      - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP:-172.20.0.10}
+      - REPLICA_SERVER_IP=${REPLICA_SERVER_IP:-172.20.0.20}
+    
+    # Volume mounts
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/certs:/etc/haproxy/certs:ro
+      - ./haproxy/errors:/etc/haproxy/errors:ro
+    
+    # Ports (only needed if not using host network mode)
+    # ports:
+    #   - "80:80"       # HTTP
+    #   - "443:443"     # HTTPS
+    #   - "5432:5432"   # PostgreSQL
+    #   - "8404:8404"   # Stats
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Note: If using bridge network mode instead of host mode, uncomment below:
+# networks:
+#   haproxy-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.30.0.0/16

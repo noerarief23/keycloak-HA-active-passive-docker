@@ -1,0 +1,56 @@
+HTTP/1.1 503 Service Unavailable
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-cache
+Connection: close
+Retry-After: 30
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>503 Service Unavailable</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 50px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #e67e22; margin: 0 0 20px 0; }
+        .error-code { font-size: 72px; font-weight: bold; color: #e67e22; margin: 0; }
+        p { color: #666; line-height: 1.6; }
+        .details { background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107; }
+        .retry-btn { display: inline-block; background: #3498db; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; margin-top: 20px; }
+        .retry-btn:hover { background: #2980b9; }
+        .countdown { font-size: 18px; font-weight: bold; color: #3498db; }
+    </style>
+    <script>
+        let seconds = 30;
+        function countdown() {
+            if (seconds > 0) {
+                document.getElementById('countdown').textContent = seconds;
+                seconds--;
+                setTimeout(countdown, 1000);
+            } else {
+                location.reload();
+            }
+        }
+        window.onload = countdown;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="error-code">503</div>
+        <h1>Service Unavailable</h1>
+        <p>The service is temporarily unavailable. All backend servers are currently down.</p>
+        <div class="details">
+            <strong>Possible reasons:</strong>
+            <ul>
+                <li>Scheduled maintenance in progress</li>
+                <li>All servers are being restarted</li>
+                <li>System overload or capacity issues</li>
+                <li>Failover procedure in progress</li>
+            </ul>
+        </div>
+        <p>The page will automatically retry in <span id="countdown" class="countdown">30</span> seconds.</p>
+        <a href="javascript:location.reload()" class="retry-btn">Retry Now</a>
+    </div>
+</body>
+</html>
