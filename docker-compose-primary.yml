@@ -48,10 +48,14 @@ services:
       - KC_HTTP_ENABLED=true
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
-      - KC_PROXY=edge
+      - KC_PROXY_HEADERS=xforwarded
       - KC_HOSTNAME_PORT=8443
+      - KC_HOSTNAME_ADMIN_URL=https://localhost:8443
+      - KC_HOSTNAME_URL=https://localhost:8443
+      - KC_HTTP_RELATIVE_PATH=/
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - JAVA_OPTS_APPEND=-Djava.net.preferIPv4Stack=true
     command: start --optimized
     depends_on:
       postgres-primary:
