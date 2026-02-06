@@ -100,6 +100,7 @@ This repository provides a production-ready Active/Passive High Availability set
 - Docker Engine 20.10+
 - Docker Compose 2.0+
 - Two servers (physical or virtual) for Active/Passive setup
+- Optional: Third server for HAProxy load balancer (recommended for production)
 - Network connectivity between servers
 - Minimum 2GB RAM per server
 - Minimum 20GB disk space per server
@@ -159,7 +160,17 @@ The replica will automatically:
 2. Perform a base backup
 3. Start streaming replication
 
-**Note:** Keycloak on the replica is NOT started automatically. It will only be started during failover.
+**Note:** Keycloak on the replica is NOT started automatically. It will only be started during failover. The replica uses Docker Compose profiles to prevent automatic startup:
+
+```yaml
+profiles:
+  - manual  # Don't start automatically
+```
+
+To start Keycloak on replica during failover:
+```bash
+docker compose -f docker-compose-replica.yml --profile manual up -d keycloak-replica
+```
 
 ### 5. Verify the Setup
 
@@ -181,6 +192,14 @@ For production deployments, deploy HAProxy on Server C:
 
 ```bash
 # On Server C
+cp .env.lb.example .env
+# Edit .env and configure:
+# - HAPROXY_STATS_USER and HAPROXY_STATS_PASSWORD
+# - PRIMARY_SERVER_IP (Server A IP address)
+# - REPLICA_SERVER_IP (Server B IP address)
+nano .env
+
+# Deploy HAProxy
 cd haproxy/scripts
 ./deploy-haproxy.sh
 ```
@@ -235,6 +254,14 @@ A dedicated `replicator` user is created with `REPLICATION` privileges:
 CREATE ROLE replicator WITH REPLICATION PASSWORD 'password' LOGIN;
 ```
 
+### Health Check User
+
+A dedicated `haproxy_check` user is created for HAProxy health checks:
+
+```sql
+CREATE USER haproxy_check WITH LOGIN;
+```
+
 ### pg_hba.conf Configuration
 
 Both servers allow replication connections from Docker networks:
@@ -255,6 +282,17 @@ host    replication     replicator      192.168.0.0/16          md5
 - `KC_HOSTNAME`: Public hostname
 - `KC_HEALTH_ENABLED`: Enable health endpoints
 - `KC_METRICS_ENABLED`: Enable metrics
+- `KC_PROXY`: Proxy mode (edge for HAProxy)
+- `KEYCLOAK_ADMIN`: Admin username
+- `KEYCLOAK_ADMIN_PASSWORD`: Admin password
+
+#### Docker Image
+
+The project uses a custom Keycloak image built from `common/keycloak/Dockerfile`:
+- Base image: `quay.io/keycloak/keycloak:26.5.2`
+- Pre-built with PostgreSQL support
+- Health and metrics enabled
+- Optimized for production use
 
 #### Health Checks
 
@@ -272,7 +310,7 @@ healthcheck:
 **Keycloak:**
 ```yaml
 healthcheck:
-  test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready"]
+  test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
   interval: 30s
   timeout: 10s
   retries: 3
@@ -351,9 +389,14 @@ This script will:
 
 #### 3. Update DNS/Load Balancer
 
-Update your DNS records or load balancer to point to Server B:
+If using HAProxy:
+- HAProxy will automatically detect the failover and route traffic to the new primary
+- No manual DNS changes needed
+
+If not using HAProxy:
+- Update your DNS records to point to Server B
 - Change A record or CNAME to Server B's IP
-- Update load balancer backend to Server B
+- Wait for DNS propagation (TTL dependent)
 
 #### 4. Verify Failover
 
@@ -464,17 +507,24 @@ After the original primary is fixed:
    - Disk space low
    - Service health check failures
    - High CPU/memory usage
+   - HAProxy backend failures (if using HAProxy)
 
 2. **Monitor metrics:**
    - Database connections
    - Query performance
    - Replication throughput
    - Keycloak response times
+   - HAProxy backend status and response times
 
 3. **Log aggregation:**
-   - Centralize logs from both servers
+   - Centralize logs from all servers
    - Set up log retention policies
    - Implement log analysis
+
+4. **HAProxy monitoring (if deployed):**
+   - Access stats page: http://haproxy-ip:8404/stats
+   - Monitor Prometheus metrics: http://haproxy-ip:8404/metrics
+   - Use check-backends script: `./haproxy/scripts/check-backends.sh`
 
 ### Testing
 
@@ -601,18 +651,32 @@ To add more replicas:
 3. Use the same replication user and slot
 4. Start the additional replica
 
-### Custom Network Configuration
+### Network Configuration
 
-Modify the network settings in docker-compose files:
+#### Docker Networks
+
+Both primary and replica use the same subnet (172.20.0.0/16) by design:
+- This configuration assumes deployment on **separate physical servers**
+- Each server has its own isolated Docker network
+- If running both on the same host for testing, there will be network conflicts
+
+**For single-host testing:**
+- Use different subnets (e.g., 172.21.0.0/16 for replica)
+- Or create a `docker-compose.override.yml` file
+- Or use a shared Docker network
+
+#### Cross-Server Communication
+
+The replica uses `extra_hosts` to map the primary server:
 
 ```yaml
-networks:
-  keycloak-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.10.0.0/16
+extra_hosts:
+  - "postgres-primary:${PRIMARY_SERVER_IP}"
 ```
+
+This allows the replica to connect to the primary server for replication. The `PRIMARY_SERVER_IP` must be set in the `.env` file to the actual IP address of Server A.
+
+**Important:** For single-host testing, this `extra_hosts` entry may conflict with Docker's built-in DNS. Consider removing it via `docker-compose.override.yml` for local testing.
 
 ## Performance Tuning
 
@@ -639,6 +703,36 @@ environment:
 
 ## Support and Contribution
 
+### Documentation
+
+- **[README.md](README.md)** - Main documentation (this file)
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
+- **[OPERATIONS.md](OPERATIONS.md)** - Operations and maintenance
+- **[PRODUCTION-DEPLOYMENT.md](PRODUCTION-DEPLOYMENT.md)** - Production deployment guide
+- **[HAPROXY.md](HAPROXY.md)** - HAProxy load balancer setup
+- **[HAPROXY-TROUBLESHOOTING.md](HAPROXY-TROUBLESHOOTING.md)** - HAProxy troubleshooting
+- **[haproxy/README.md](haproxy/README.md)** - HAProxy directory overview
+- **[haproxy/TESTING-GUIDE.md](haproxy/TESTING-GUIDE.md)** - HAProxy testing procedures
+- **[haproxy/QUICK-REFERENCE.md](haproxy/QUICK-REFERENCE.md)** - HAProxy command reference
+
+### Scripts
+
+**Core Scripts:**
+- `scripts/health-check.sh` - Check health of all services
+- `scripts/verify-replication.sh` - Verify replication is working
+- `scripts/promote-replica.sh` - Promote replica to primary during failover
+
+**HAProxy Scripts:**
+- `haproxy/scripts/deploy-haproxy.sh` - Automated HAProxy deployment
+- `haproxy/scripts/check-backends.sh` - Check backend server health
+- `haproxy/scripts/validate-config.sh` - Validate HAProxy configuration
+- `haproxy/scripts/generate-cert.sh` - Generate self-signed SSL certificates
+- `haproxy/scripts/combine-cert.sh` - Combine SSL certificate and key
+- `haproxy/scripts/test-failover.sh` - Test failover scenarios
+- `haproxy/scripts/integration-test.sh` - Run integration tests
+- `haproxy/scripts/load-test.sh` - Performance load testing
+- `haproxy/scripts/rollback-haproxy.sh` - Rollback HAProxy configuration
+
 ### Issues
 
 For bugs or feature requests, please open an issue on GitHub.
@@ -661,14 +755,19 @@ This project is provided as-is for educational and production use.
 - [Keycloak Documentation](https://www.keycloak.org/documentation)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [PostgreSQL High Availability Best Practices](https://www.postgresql.org/docs/current/high-availability.html)
+- [HAProxy Documentation](https://www.haproxy.com/documentation/)
+- [HAProxy Configuration Manual](https://cbonte.github.io/haproxy-dconv/)
 
 ## Version History
 
 - **v1.0.0** - Initial release with Active/Passive architecture
-  - PostgreSQL 15 streaming replication
-  - Keycloak 23.0
+  - PostgreSQL 16 streaming replication
+  - Keycloak 26.5.2
   - Docker Compose setup
   - Automated scripts for management and failover
+  - HAProxy load balancer support
+  - SSL/TLS termination
+  - Comprehensive monitoring and health checks
 
 ---
 
