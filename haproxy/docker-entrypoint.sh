@@ -18,13 +18,21 @@ fi
 # Set default values
 HAPROXY_STATS_USER="${HAPROXY_STATS_USER:-admin}"
 
-# Escape special characters for sed (/, &, and \)
-ESCAPED_USER=$(echo "$HAPROXY_STATS_USER" | sed 's/[\/&]/\\&/g')
-ESCAPED_PASSWORD=$(echo "$HAPROXY_STATS_PASSWORD" | sed 's/[\/&]/\\&/g')
+# NOTE: This script uses sed for environment variable substitution.
+# To avoid issues, passwords should not contain the characters: / \ &
+# Use alphanumeric characters, hyphens, underscores, and common symbols like !@#$%^*()
+
+# Escape forward slashes, backslashes, and ampersands for sed
+escape_sed() {
+  echo "$1" | sed -e 's/[\/&\\]/\\&/g'
+}
+
+ESCAPED_USER=$(escape_sed "$HAPROXY_STATS_USER")
+ESCAPED_PASSWORD=$(escape_sed "$HAPROXY_STATS_PASSWORD")
 
 # Use sed to substitute environment variables in the configuration
-sed -e "s/\${HAPROXY_STATS_USER}/$ESCAPED_USER/g" \
-    -e "s/\${HAPROXY_STATS_PASSWORD}/$ESCAPED_PASSWORD/g" \
+sed -e "s/\${HAPROXY_STATS_USER}/${ESCAPED_USER}/g" \
+    -e "s/\${HAPROXY_STATS_PASSWORD}/${ESCAPED_PASSWORD}/g" \
     "$CONFIG_TEMPLATE" > "$CONFIG_PROCESSED"
 
 echo "HAProxy configuration processed successfully"
