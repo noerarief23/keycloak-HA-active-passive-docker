@@ -26,6 +26,10 @@ services:
       - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - ./haproxy/certs:/etc/haproxy/certs:ro
       - ./haproxy/errors:/etc/haproxy/errors:ro
+      - ./haproxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    
+    # Custom entrypoint to substitute environment variables in haproxy.cfg
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
     
     # Ports for multi-server deployment
     ports:
