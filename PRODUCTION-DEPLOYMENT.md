@@ -221,17 +221,22 @@ With valid SSL certificate and proper domain, the iframe timeout issue will not 
 ### 3. Update docker-compose-lb.yml
 Use `docker-compose-lb.yml` (not `docker-compose-lb-windows.yml`)
 
-### 4. Disable HTTP access to Keycloak
-In production, set:
+### 4. Configure Keycloak for Production
+
+**IMPORTANT**: The default compose files are configured for development/testing with relaxed security settings. For production deployment, you should update the following environment variables in `docker-compose-primary.yml` and `docker-compose-replica.yml`:
+
+#### Disable HTTP access to Keycloak
 ```bash
 KC_HTTP_ENABLED=false
 ```
+**Note**: Default is `true` for easier development setup. In production, only HTTPS should be enabled since HAProxy terminates SSL.
 
-### 5. Enable HTTPS strict mode
+#### Enable HTTPS strict mode
 ```bash
 KC_HOSTNAME_STRICT=true
 KC_HOSTNAME_STRICT_HTTPS=true
 ```
+**Note**: Default is `false` for flexibility during development. In production, strict hostname validation prevents security issues.
 
 ## Monitoring
 

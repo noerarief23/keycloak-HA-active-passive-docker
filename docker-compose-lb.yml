@@ -11,10 +11,15 @@ services:
     networks:
       - haproxy-network
     
-    # Environment variables for stats authentication
+    # Environment variables for stats authentication and backend server IPs
     environment:
       - HAPROXY_STATS_USER=${HAPROXY_STATS_USER:-admin}
-      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme_secure_password}
+      # HAPROXY_STATS_PASSWORD must be set explicitly in the environment; no default is provided for security reasons
+      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD}
+      # PRIMARY_SERVER_IP and REPLICA_SERVER_IP must be set in .env.lb file
+      # These IP addresses are used in extra_hosts configuration (see lines 45-49 below)
+      # to resolve backend server hostnames (keycloak-primary, postgres-primary, etc.)
+      # Example: PRIMARY_SERVER_IP=192.168.1.10, REPLICA_SERVER_IP=192.168.1.11
       - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP}
       - REPLICA_SERVER_IP=${REPLICA_SERVER_IP}
     
@@ -23,6 +28,10 @@ services:
       - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - ./haproxy/certs:/etc/haproxy/certs:ro
       - ./haproxy/errors:/etc/haproxy/errors:ro
+      - ./haproxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    
+    # Custom entrypoint to substitute environment variables in haproxy.cfg
+    entrypoint: ["/docker-entrypoint.sh"]
     
     # Ports for multi-server deployment
     ports:
@@ -60,3 +69,6 @@ services:
 networks:
   haproxy-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
