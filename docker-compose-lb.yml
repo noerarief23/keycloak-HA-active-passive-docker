@@ -29,7 +29,7 @@ services:
       - ./haproxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
     
     # Custom entrypoint to substitute environment variables in haproxy.cfg
-    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
+    entrypoint: ["/docker-entrypoint.sh"]
     
     # Ports for multi-server deployment
     ports:
