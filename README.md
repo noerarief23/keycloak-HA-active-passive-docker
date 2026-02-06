@@ -66,14 +66,14 @@ This repository provides a production-ready Active/Passive High Availability set
         │                  │                  │
         ▼                  ▼                  ▼
 ┌───────────────┐  ┌───────────────┐  ┌──────────────┐
-│  Server A     │  │  Server B     │  │ Health       │
-│  (Primary)    │  │  (Replica)    │  │ Checks       │
+│  Server A     │  │  Server B     │  │ Automatic    │
+│  (Primary)    │  │  (Replica)    │  │ Failover     │
 │               │  │               │  │              │
-│ Keycloak:8080 │  │ Keycloak:8081 │  │ Every 5s     │
-│ PostgreSQL    │  │ PostgreSQL    │  │ (Keycloak)   │
+│ Keycloak:8080 │  │ Keycloak:8081 │  │ ~15-20s      │
+│ PostgreSQL    │  │ PostgreSQL    │  │ downtime     │
 │ :5432         │  │ :5433         │  │              │
-│               │  │               │  │ Every 3s     │
-│ [ACTIVE]      │  │ [STANDBY]     │  │ (PostgreSQL) │
+│               │  │               │  │ Zero manual  │
+│ [ACTIVE]      │  │ [STANDBY]     │  │ intervention │
 └───────┬───────┘  └───────┬───────┘  └──────────────┘
         │                  │
         └──────────────────┘
@@ -94,6 +94,111 @@ This repository provides a production-ready Active/Passive High Availability set
 - ✅ SSL/TLS termination and certificate management
 - ✅ Built-in monitoring and statistics dashboard
 - ✅ Prometheus metrics export
+
+## Why Use HAProxy Load Balancer?
+
+### Automatic Failover (Zero Manual Intervention)
+
+HAProxy provides **automatic failover detection and switching** without any manual intervention:
+
+**Without HAProxy:**
+- Manual detection of primary failure
+- Manual start of replica Keycloak: `docker compose --profile manual up -d keycloak-replica`
+- Manual DNS update or load balancer reconfiguration
+- Total downtime: **5-15 minutes** (depending on detection and response time)
+
+**With HAProxy:**
+- Automatic health check every 5 seconds
+- Automatic failover after 3 failed checks (15 seconds)
+- Zero manual intervention required
+- Total downtime: **~15-20 seconds**
+
+### How HAProxy Automatic Failover Works
+
+```
+Timeline of Automatic Failover:
+
+Second 0:  Primary UP ✅ → Traffic flows to Primary
+           |
+Second 5:  Health check #1 FAIL ❌ → Still routing to Primary
+           |
+Second 10: Health check #2 FAIL ❌ → Still routing to Primary
+           |
+Second 15: Health check #3 FAIL ❌ → Primary marked DOWN 🔴
+           |
+           └──→ AUTOMATIC SWITCH to Replica ✅
+           |
+Second 20: All traffic now flows to Replica
+```
+
+### HAProxy Configuration for Automatic Failover
+
+The automatic failover is configured in `haproxy/haproxy.cfg`:
+
+```properties
+backend keycloak_backend
+    # Health check configuration
+    option httpchk
+    http-check connect port 9000              # Keycloak management port
+    http-check send meth GET uri /health/ready
+    http-check expect status 200
+    
+    # Primary server (active)
+    server keycloak-primary keycloak-primary:8080 \
+        check inter 5s fall 3 rise 2
+    
+    # Replica server (backup - only used when primary is down)
+    server keycloak-replica keycloak-replica:8080 \
+        check inter 5s fall 3 rise 2 backup
+```
+
+**Key Parameters:**
+- `check` - Enable health checking
+- `inter 5s` - Check every 5 seconds
+- `fall 3` - Mark server DOWN after 3 consecutive failures (15 seconds)
+- `rise 2` - Mark server UP after 2 consecutive successes (10 seconds)
+- `backup` - Only use this server when all non-backup servers are down
+
+### Additional HAProxy Benefits
+
+1. **Single Entry Point**
+   - One IP/hostname for clients
+   - No DNS changes needed during failover
+   - Simplified client configuration
+
+2. **SSL/TLS Termination**
+   - Centralized certificate management
+   - Offload SSL processing from Keycloak
+   - Automatic HTTP to HTTPS redirect
+
+3. **Real-time Monitoring**
+   - Stats dashboard at `http://haproxy-ip:8404/stats`
+   - See server status (UP/DOWN) in real-time
+   - Monitor health check results
+   - Track failover events
+
+4. **Load Distribution**
+   - Round-robin load balancing (when both servers are up)
+   - Automatic traffic redistribution during failover
+   - Connection pooling and optimization
+
+5. **PostgreSQL Failover**
+   - Same automatic failover for PostgreSQL
+   - Health checks every 3 seconds
+   - Faster detection for database issues
+
+### Comparison: With vs Without HAProxy
+
+| Aspect | Without HAProxy | With HAProxy |
+|--------|----------------|--------------|
+| **Failover Detection** | Manual monitoring | Automatic (every 5s) |
+| **Failover Time** | 5-15 minutes | 15-20 seconds |
+| **Manual Steps** | 3-4 steps required | Zero |
+| **DNS Changes** | Required | Not required |
+| **Monitoring** | External tools needed | Built-in stats dashboard |
+| **SSL Management** | Per-server | Centralized |
+| **Client Config** | Must update after failover | No changes needed |
+| **Downtime** | High | Minimal |
 
 ## Prerequisites
 
@@ -212,9 +317,9 @@ The deployment script will:
 - Verify health checks
 
 Access HAProxy:
-- **Stats Page:** http://server-c-ip:8404/stats
 - **Keycloak:** https://server-c-ip/
 - **PostgreSQL:** server-c-ip:5432
+- **Stats Dashboard:** http://server-c-ip:8404/stats (see Best Practices → Monitoring for details)
 
 For detailed HAProxy setup, see [HAPROXY.md](HAPROXY.md)
 
@@ -522,9 +627,15 @@ After the original primary is fixed:
    - Implement log analysis
 
 4. **HAProxy monitoring (if deployed):**
-   - Access stats page: http://haproxy-ip:8404/stats
-   - Monitor Prometheus metrics: http://haproxy-ip:8404/metrics
-   - Use check-backends script: `./haproxy/scripts/check-backends.sh`
+   - **Stats Dashboard:** http://haproxy-ip:8404/stats
+     - Current active server (Primary or Replica)
+     - Health check status and failure count
+     - Last status change timestamp
+     - Traffic statistics per backend
+     - Response times and error rates
+   - **Prometheus Metrics:** http://haproxy-ip:8404/metrics
+   - **Backend Health Check Script:** `./haproxy/scripts/check-backends.sh`
+   - **Health Endpoint:** http://haproxy-ip:8404/health
 
 ### Testing
 
