@@ -11,10 +11,13 @@ services:
     networks:
       - haproxy-network
     
-    # Environment variables for stats authentication
+    # Environment variables for stats authentication and backend server IPs
     environment:
       - HAPROXY_STATS_USER=${HAPROXY_STATS_USER:-admin}
-      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme_secure_password}
+      # HAPROXY_STATS_PASSWORD must be set explicitly in the environment; no default is provided for security reasons
+      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD}
+      # PRIMARY_SERVER_IP and REPLICA_SERVER_IP must be set in .env.lb file
+      # These are used for extra_hosts configuration to resolve backend server hostnames
       - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP}
       - REPLICA_SERVER_IP=${REPLICA_SERVER_IP}
     
@@ -60,3 +63,6 @@ services:
 networks:
   haproxy-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

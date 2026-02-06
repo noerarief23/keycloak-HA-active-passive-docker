@@ -22,8 +22,7 @@ echo "Primary server is ready. Starting base backup..."
 # Stop the temporary postgres instance started by docker-entrypoint
 if [ -f "$PGDATA/postmaster.pid" ]; then
     echo "Stopping temporary postgres instance..."
-    pg_ctl -D "$PGDATA" stop -m fast || true
-    sleep 2
+    pg_ctl -w -D "$PGDATA" stop -m fast || true
 fi
 
 # Remove existing data directory contents
