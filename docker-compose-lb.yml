@@ -6,16 +6,17 @@ services:
     container_name: haproxy-lb
     hostname: haproxy-lb
     
-    # Network mode: host for direct access to backend servers
-    # For multi-server deployment, use bridge mode and configure extra_hosts
-    network_mode: host
+    # For multi-server deployment, use bridge network with extra_hosts
+    # For single-server deployment, can use host network mode
+    networks:
+      - haproxy-network
     
     # Environment variables for stats authentication
     environment:
       - HAPROXY_STATS_USER=${HAPROXY_STATS_USER:-admin}
-      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme}
-      - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP:-172.20.0.10}
-      - REPLICA_SERVER_IP=${REPLICA_SERVER_IP:-172.20.0.20}
+      - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme_secure_password}
+      - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP}
+      - REPLICA_SERVER_IP=${REPLICA_SERVER_IP}
     
     # Volume mounts
     volumes:
@@ -23,12 +24,20 @@ services:
       - ./haproxy/certs:/etc/haproxy/certs:ro
       - ./haproxy/errors:/etc/haproxy/errors:ro
     
-    # Ports (only needed if not using host network mode)
-    # ports:
-    #   - "80:80"       # HTTP
-    #   - "443:443"     # HTTPS
-    #   - "5432:5432"   # PostgreSQL
-    #   - "8404:8404"   # Stats
+    # Ports for multi-server deployment
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "5432:5432"   # PostgreSQL
+      - "8404:8404"   # Stats
+    
+    # Extra hosts for multi-server deployment
+    # Map backend server hostnames to their IP addresses
+    extra_hosts:
+      - "keycloak-primary:${PRIMARY_SERVER_IP}"
+      - "keycloak-replica:${REPLICA_SERVER_IP}"
+      - "postgres-primary:${PRIMARY_SERVER_IP}"
+      - "postgres-replica:${REPLICA_SERVER_IP}"
     
     # Health check
     healthcheck:
@@ -48,10 +57,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-# Note: If using bridge network mode instead of host mode, uncomment below:
-# networks:
-#   haproxy-network:
-#     driver: bridge
-#     ipam:
-#       config:
-#         - subnet: 172.30.0.0/16
+networks:
+  haproxy-network:
+    driver: bridge
