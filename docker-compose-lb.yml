@@ -17,7 +17,9 @@ services:
       # HAPROXY_STATS_PASSWORD must be set explicitly in the environment; no default is provided for security reasons
       - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD}
       # PRIMARY_SERVER_IP and REPLICA_SERVER_IP must be set in .env.lb file
-      # These are used for extra_hosts configuration to resolve backend server hostnames
+      # These IP addresses are used in extra_hosts configuration (see lines 49-52 below)
+      # to resolve backend server hostnames (keycloak-primary, postgres-primary, etc.)
+      # Example: PRIMARY_SERVER_IP=192.168.1.10, REPLICA_SERVER_IP=192.168.1.11
       - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP}
       - REPLICA_SERVER_IP=${REPLICA_SERVER_IP}
     

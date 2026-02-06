@@ -19,8 +19,9 @@ fi
 HAPROXY_STATS_USER="${HAPROXY_STATS_USER:-admin}"
 
 # NOTE: This script uses sed for environment variable substitution.
-# To avoid issues, passwords should not contain the characters: / \ &
-# Use alphanumeric characters, hyphens, underscores, and common symbols like !@#$%^*()
+# The escape_sed function below handles special characters: / \ &
+# Other special characters like !@#$%^*()_+-=[]{}|:;"'<>,.? should work fine.
+# Passwords are safely escaped before substitution to prevent sed errors.
 
 # Escape forward slashes, backslashes, and ampersands for sed
 escape_sed() {
