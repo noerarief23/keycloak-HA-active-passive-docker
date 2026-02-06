@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Kiro IDE settings
+.kiro/
+
 # Docker volumes and data
 postgres-*-data/
 postgres-*-archive/
