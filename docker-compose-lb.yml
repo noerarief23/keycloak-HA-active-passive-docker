@@ -17,13 +17,22 @@ services:
       - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme_secure_password}
       - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP}
       - REPLICA_SERVER_IP=${REPLICA_SERVER_IP}
+      - PRIMARY_KEYCLOAK_PORT=${PRIMARY_KEYCLOAK_PORT:-8080}
+      - REPLICA_KEYCLOAK_PORT=${REPLICA_KEYCLOAK_PORT:-8081}
+      - PRIMARY_POSTGRES_PORT=${PRIMARY_POSTGRES_PORT:-5432}
+      - REPLICA_POSTGRES_PORT=${REPLICA_POSTGRES_PORT:-5433}
     
     # Volume mounts
     volumes:
-      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg.template:ro
+      - ./haproxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
       - ./haproxy/certs:/etc/haproxy/certs:ro
       - ./haproxy/errors:/etc/haproxy/errors:ro
       - haproxy-socket:/var/run
+    
+    # Custom entrypoint to process environment variables
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
+    command: ["-W", "-db"]
     
     # Ports for multi-server deployment
     ports:
