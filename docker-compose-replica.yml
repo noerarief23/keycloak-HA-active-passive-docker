@@ -29,7 +29,7 @@ services:
       "
     networks:
       keycloak-network:
-        ipv4_address: 172.20.0.20
+        ipv4_address: 172.41.2.20
     ports:
       - "${POSTGRES_REPLICA_PORT:-5433}:5432"
     # NOTE: The extra_hosts mapping is for cross-server deployments where the primary
@@ -76,7 +76,7 @@ services:
         condition: service_healthy
     networks:
       keycloak-network:
-        ipv4_address: 172.20.0.21
+        ipv4_address: 172.41.2.21
     ports:
       - "${KEYCLOAK_REPLICA_HTTP_PORT:-8081}:8080"
       - "${KEYCLOAK_REPLICA_MGMT_PORT:-9001}:9000"  # Management port for health checks
@@ -94,12 +94,12 @@ networks:
     driver: bridge
     ipam:
       config:
-        # NOTE: Both primary and replica use the same subnet (172.20.0.0/16).
+        # NOTE: Both primary and replica use the same subnet (172.41.2.0/24).
         # This configuration assumes deployment on separate physical servers.
         # If running both on the same host for testing, there will be network
         # conflicts. For single-host testing, use different subnets (e.g.,
-        # 172.21.0.0/16 for replica) or use a docker-compose.override.yml.
-        - subnet: 172.20.0.0/16
+        # 172.41.3.0/24 for replica) or use a docker-compose.override.yml.
+        - subnet: 172.41.2.0/24
 
 volumes:
   postgres-replica-data:
