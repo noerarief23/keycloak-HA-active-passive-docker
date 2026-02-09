@@ -517,7 +517,6 @@ openssl rsa -noout -modulus -in haproxy/certs/keycloak.key | openssl md5
 
 - [HAProxy Configuration](haproxy/haproxy.cfg)
 - [SSL Certificate Setup](haproxy/certs/README.md)
-- [Troubleshooting Guide](HAPROXY-TROUBLESHOOTING.md)
 - [Failover Testing](haproxy/scripts/test-failover.sh)
 - [Backend Health Checks](haproxy/scripts/check-backends.sh)
 - [HAProxy Documentation](https://www.haproxy.com/documentation/)

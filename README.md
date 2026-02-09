@@ -210,6 +210,49 @@ backend keycloak_backend
 - Minimum 2GB RAM per server
 - Minimum 20GB disk space per server
 
+## Port Configuration
+
+All service ports can be customized via environment variables in `.env` files.
+
+### Default Ports
+
+| Component | Service | Default Port | Environment Variable |
+|-----------|---------|-------------|---------------------|
+| **Primary** | PostgreSQL | 5432 | `POSTGRES_PRIMARY_PORT` |
+| | Keycloak HTTP | 8080 | `KEYCLOAK_PRIMARY_HTTP_PORT` |
+| | Keycloak Management | 9000 | `KEYCLOAK_PRIMARY_MGMT_PORT` |
+| **Replica** | PostgreSQL | 5433 | `POSTGRES_REPLICA_PORT` |
+| | Keycloak HTTP | 8081 | `KEYCLOAK_REPLICA_HTTP_PORT` |
+| | Keycloak Management | 9001 | `KEYCLOAK_REPLICA_MGMT_PORT` |
+| **HAProxy** | HTTP | 80 | `HAPROXY_HTTP_PORT` |
+| | HTTPS | 443 | `HAPROXY_HTTPS_PORT` |
+| | PostgreSQL | 5432 | `HAPROXY_POSTGRES_PORT` |
+| | Stats | 8404 | `HAPROXY_STATS_PORT` |
+
+### Custom Port Example
+
+To avoid port conflicts, edit `.env` file:
+
+```bash
+# Primary Server
+POSTGRES_PRIMARY_PORT=15432
+KEYCLOAK_PRIMARY_HTTP_PORT=18080
+KEYCLOAK_PRIMARY_MGMT_PORT=19000
+
+# Replica Server
+POSTGRES_REPLICA_PORT=15433
+KEYCLOAK_REPLICA_HTTP_PORT=18081
+KEYCLOAK_REPLICA_MGMT_PORT=19001
+
+# HAProxy
+HAPROXY_HTTP_PORT=8080
+HAPROXY_HTTPS_PORT=8443
+HAPROXY_POSTGRES_PORT=15432
+HAPROXY_STATS_PORT=18404
+```
+
+**Note:** If using custom ports, ensure HAProxy backend port variables match actual service ports.
+
 ## Quick Start
 
 ### 1. Clone the Repository
@@ -820,11 +863,11 @@ environment:
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
 - **[OPERATIONS.md](OPERATIONS.md)** - Operations and maintenance
 - **[PRODUCTION-DEPLOYMENT.md](PRODUCTION-DEPLOYMENT.md)** - Production deployment guide
-- **[HAPROXY.md](HAPROXY.md)** - HAProxy load balancer setup
-- **[HAPROXY-TROUBLESHOOTING.md](HAPROXY-TROUBLESHOOTING.md)** - HAProxy troubleshooting
+- **[HAPROXY.md](HAPROXY.md)** - HAProxy load balancer setup and troubleshooting
 - **[haproxy/README.md](haproxy/README.md)** - HAProxy directory overview
 - **[haproxy/TESTING-GUIDE.md](haproxy/TESTING-GUIDE.md)** - HAProxy testing procedures
 - **[haproxy/QUICK-REFERENCE.md](haproxy/QUICK-REFERENCE.md)** - HAProxy command reference
+- **[haproxy/DEPLOYMENT-CHECKLIST.md](haproxy/DEPLOYMENT-CHECKLIST.md)** - HAProxy deployment checklist
 
 ### Scripts
 

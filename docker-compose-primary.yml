@@ -23,7 +23,7 @@ services:
       keycloak-network:
         ipv4_address: 172.20.0.10
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PRIMARY_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -59,8 +59,8 @@ services:
       keycloak-network:
         ipv4_address: 172.20.0.11
     ports:
-      - "8080:8080"
-      - "9000:9000"  # Management port for health checks
+      - "${KEYCLOAK_PRIMARY_HTTP_PORT:-8080}:8080"
+      - "${KEYCLOAK_PRIMARY_MGMT_PORT:-9000}:9000"  # Management port for health checks
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
       interval: 30s
