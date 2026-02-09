@@ -3,10 +3,15 @@ set -e
 
 echo "Initializing PostgreSQL Replica Server..."
 
+# Get primary port from environment variable (default to 5432)
+PRIMARY_POSTGRES_PORT=${PRIMARY_POSTGRES_PORT:-5432}
+
+echo "Connecting to primary at postgres-primary:${PRIMARY_POSTGRES_PORT}"
+
 # Wait for primary server to be ready with timeout
 TIMEOUT_SECONDS=300  # 5 minutes
 START_TIME=$(date +%s)
-until PGPASSWORD=${REPLICATION_PASSWORD} pg_isready -h postgres-primary -U replicator; do
+until PGPASSWORD=${REPLICATION_PASSWORD} pg_isready -h postgres-primary -p ${PRIMARY_POSTGRES_PORT} -U replicator; do
   echo "Waiting for primary server to be ready..."
   sleep 5
   CURRENT_TIME=$(date +%s)
@@ -33,7 +38,7 @@ rm -rf "$PGDATA"/*
 # Perform base backup from primary
 PGPASSWORD=${REPLICATION_PASSWORD} pg_basebackup \
     -h postgres-primary \
-    -p 5432 \
+    -p ${PRIMARY_POSTGRES_PORT} \
     -U replicator \
     -D "$PGDATA" \
     -Fp \

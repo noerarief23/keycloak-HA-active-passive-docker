@@ -10,6 +10,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - REPLICATION_PASSWORD=${REPLICATION_PASSWORD}
       - PGDATA=/var/lib/postgresql/data/pgdata
+      - PRIMARY_POSTGRES_PORT=${PRIMARY_POSTGRES_PORT:-5432}
     volumes:
       - postgres-replica-data:/var/lib/postgresql/data
       - postgres-replica-archive:/var/lib/postgresql/archive

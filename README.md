@@ -243,15 +243,21 @@ KEYCLOAK_PRIMARY_MGMT_PORT=19000
 POSTGRES_REPLICA_PORT=15433
 KEYCLOAK_REPLICA_HTTP_PORT=18081
 KEYCLOAK_REPLICA_MGMT_PORT=19001
+PRIMARY_POSTGRES_PORT=15432  # Must match primary port for replication
 
 # HAProxy
 HAPROXY_HTTP_PORT=8080
 HAPROXY_HTTPS_PORT=8443
 HAPROXY_POSTGRES_PORT=15432
 HAPROXY_STATS_PORT=18404
+PRIMARY_POSTGRES_PORT=15432  # Backend primary port
+REPLICA_POSTGRES_PORT=15433  # Backend replica port
 ```
 
-**Note:** If using custom ports, ensure HAProxy backend port variables match actual service ports.
+**Important Notes:**
+- `PRIMARY_POSTGRES_PORT` on replica server must match `POSTGRES_PRIMARY_PORT` on primary server
+- HAProxy backend ports must match actual service ports
+- After changing ports, restart services: `docker compose down && docker compose up -d`
 
 ## Quick Start
 
@@ -780,6 +786,37 @@ After the original primary is fixed:
 4. Restart PostgreSQL if needed:
    ```bash
    docker compose -f docker-compose-replica.yml restart postgres-replica
+   ```
+
+### Replica Cannot Connect to Primary (Custom Ports)
+
+**Symptoms:**
+- Replica fails to initialize
+- Error: "could not connect to primary"
+- Using custom PostgreSQL port on primary
+
+**Solutions:**
+1. Ensure `PRIMARY_POSTGRES_PORT` is set in replica `.env`:
+   ```bash
+   # In replica .env file
+   PRIMARY_POSTGRES_PORT=5434  # Must match primary port
+   ```
+
+2. Verify primary port is accessible:
+   ```bash
+   telnet ${PRIMARY_SERVER_IP} ${PRIMARY_POSTGRES_PORT}
+   ```
+
+3. Restart replica to reinitialize:
+   ```bash
+   docker compose -f docker-compose-replica.yml down
+   docker volume rm postgres-replica-data
+   docker compose -f docker-compose-replica.yml up -d postgres-replica
+   ```
+
+4. Check replica logs:
+   ```bash
+   docker logs postgres-replica
    ```
 
 ## Advanced Configuration
