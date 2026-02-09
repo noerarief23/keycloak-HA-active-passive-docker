@@ -23,6 +23,7 @@ services:
       - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - ./haproxy/certs:/etc/haproxy/certs:ro
       - ./haproxy/errors:/etc/haproxy/errors:ro
+      - haproxy-socket:/var/run
     
     # Ports for multi-server deployment
     ports:
@@ -60,3 +61,7 @@ services:
 networks:
   haproxy-network:
     driver: bridge
+
+volumes:
+  haproxy-socket:
+    driver: local
