@@ -20,6 +20,9 @@ echo "Replica Server: $REPLICA_SERVER_IP"
 echo "  - Keycloak: $REPLICA_KEYCLOAK_PORT"
 echo "  - PostgreSQL: $REPLICA_POSTGRES_PORT"
 
+# Generate config in /tmp (writable location)
+CONFIG_OUTPUT="/tmp/haproxy.cfg"
+
 # Substitute environment variables in haproxy.cfg using sed
 sed -e "s/\${HAPROXY_STATS_USER}/$HAPROXY_STATS_USER/g" \
     -e "s/\${HAPROXY_STATS_PASSWORD}/$HAPROXY_STATS_PASSWORD/g" \
@@ -30,13 +33,13 @@ sed -e "s/\${HAPROXY_STATS_USER}/$HAPROXY_STATS_USER/g" \
     -e "s/\${PRIMARY_POSTGRES_PORT}/$PRIMARY_POSTGRES_PORT/g" \
     -e "s/\${REPLICA_POSTGRES_PORT}/$REPLICA_POSTGRES_PORT/g" \
     /usr/local/etc/haproxy/haproxy.cfg.template \
-    > /usr/local/etc/haproxy/haproxy.cfg
+    > "$CONFIG_OUTPUT"
 
-echo "HAProxy configuration generated successfully"
+echo "HAProxy configuration generated at $CONFIG_OUTPUT"
 
 # Validate configuration
-haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+haproxy -c -f "$CONFIG_OUTPUT"
 
-# Start HAProxy
+# Start HAProxy with generated config
 echo "Starting HAProxy..."
-exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg "$@"
+exec haproxy -f "$CONFIG_OUTPUT" "$@"
