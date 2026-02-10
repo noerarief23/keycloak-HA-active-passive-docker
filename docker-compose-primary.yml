@@ -70,6 +70,7 @@ services:
 
 networks:
   keycloak-network:
+    name: keycloak-network-primary
     driver: bridge
     ipam:
       config:
