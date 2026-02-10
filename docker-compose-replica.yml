@@ -86,8 +86,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    profiles:
-      - manual  # Don't start automatically, use: docker compose --profile manual up
+    # Profiles commented out - replica will always start
+    # profiles:
+    #   - manual  # if use this, use: docker compose --profile manual up
 
 networks:
   keycloak-network:
