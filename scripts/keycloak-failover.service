@@ -1,0 +1,15 @@
+[Unit]
+Description=Keycloak Automatic Failover Monitor
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=itdev
+WorkingDirectory=/home/itdev/repo/keycloak-ha-active-passive-docker
+ExecStart=/bin/bash /home/itdev/repo/keycloak-ha-active-passive-docker/scripts/auto-failover.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

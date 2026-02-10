@@ -15,8 +15,8 @@ services:
     environment:
       - HAPROXY_STATS_USER=${HAPROXY_STATS_USER:-admin}
       - HAPROXY_STATS_PASSWORD=${HAPROXY_STATS_PASSWORD:-changeme_secure_password}
-      - PRIMARY_SERVER_IP=${PRIMARY_SERVER_IP}
-      - REPLICA_SERVER_IP=${REPLICA_SERVER_IP}
+      - PRIMARY_SERVER_IP=${PRIMARY_BACKEND_IP}
+      - REPLICA_SERVER_IP=${REPLICA_BACKEND_IP}
       - PRIMARY_KEYCLOAK_PORT=${PRIMARY_KEYCLOAK_PORT:-8080}
       - REPLICA_KEYCLOAK_PORT=${REPLICA_KEYCLOAK_PORT:-8081}
       - PRIMARY_KEYCLOAK_MGMT_PORT=${PRIMARY_KEYCLOAK_MGMT_PORT:-9000}
@@ -46,14 +46,14 @@ services:
     # Extra hosts for multi-server deployment
     # Map backend server hostnames to their IP addresses
     extra_hosts:
-      - "keycloak-primary:${PRIMARY_SERVER_IP}"
-      - "keycloak-replica:${REPLICA_SERVER_IP}"
-      - "postgres-primary:${PRIMARY_SERVER_IP}"
-      - "postgres-replica:${REPLICA_SERVER_IP}"
+      - "keycloak-primary:${PRIMARY_BACKEND_IP}"
+      - "keycloak-replica:${REPLICA_BACKEND_IP}"
+      - "postgres-primary:${PRIMARY_BACKEND_IP}"
+      - "postgres-replica:${REPLICA_BACKEND_IP}"
     
     # Health check
     healthcheck:
-      test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
+      test: ["CMD-SHELL", "haproxy -c -f /tmp/haproxy.cfg || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

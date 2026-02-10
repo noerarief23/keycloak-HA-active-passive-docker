@@ -512,6 +512,192 @@ docker compose -f docker-compose-replica.yml logs -f
 
 ## Failover Procedure
 
+### Understanding HAProxy Automatic Failover
+
+HAProxy provides **automatic traffic failover** but requires replica services to be running:
+
+**What HAProxy Does Automatically:**
+- ✅ Detects primary failure (health checks every 5 seconds)
+- ✅ Marks primary as DOWN after 3 failed checks (~15 seconds)
+- ✅ Automatically routes traffic to replica (if running)
+- ✅ No manual DNS changes needed
+- ✅ Seamless traffic switching
+
+**What HAProxy Cannot Do:**
+- ❌ Start/stop Docker containers
+- ❌ Restart services
+- ❌ Manage container lifecycle
+
+### Failover Options
+
+You have three options for handling Keycloak replica during failover:
+
+#### Option 1: Always Running (Recommended for Production) ⭐
+
+**Setup:**
+Replica Keycloak is always running alongside primary.
+
+**Advantages:**
+- ✅ Fastest failover (~15-20 seconds)
+- ✅ Zero manual intervention
+- ✅ HAProxy automatic failover works perfectly
+- ✅ Production-ready
+
+**Disadvantages:**
+- ⚠️ Higher resource usage (both instances running)
+- ⚠️ Potential session conflicts (minimal with proper config)
+
+**How to enable:**
+```bash
+# Edit docker-compose-replica.yml - profiles already commented out
+# Start replica Keycloak
+docker compose -f docker-compose-replica.yml up -d keycloak-replica
+
+# Verify both running
+docker ps | grep keycloak
+```
+
+**Failover behavior:**
+```
+Primary DOWN → 15 seconds detection → Traffic switches to replica ✅
+Total downtime: ~15-20 seconds
+```
+
+#### Option 2: Automatic Start with Monitoring Service (Balanced)
+
+**Setup:**
+Use systemd service to monitor primary and auto-start replica on failure.
+
+**Advantages:**
+- ✅ Resource efficient (replica only runs when needed)
+- ✅ Automatic failover (no manual intervention)
+- ✅ Configurable monitoring and alerting
+
+**Disadvantages:**
+- ⚠️ Slightly longer downtime (~30-45 seconds)
+- ⚠️ Requires additional monitoring service
+
+**How to enable:**
+
+1. **Make script executable:**
+```bash
+chmod +x scripts/auto-failover.sh
+```
+
+2. **Test the script manually:**
+```bash
+# Run in foreground to test
+./scripts/auto-failover.sh
+```
+
+You should see:
+```
+==========================================
+Keycloak Automatic Failover Monitor
+==========================================
+Primary: 172.30.7.51:8280
+Check interval: 5s
+Failure threshold: 3
+
+Monitoring primary...
+```
+
+3. **Install as systemd service:**
+```bash
+# Copy service file
+sudo cp scripts/keycloak-failover.service /etc/systemd/system/
+
+# Edit service file to match your paths
+sudo nano /etc/systemd/system/keycloak-failover.service
+
+# Update these lines:
+# User=itdev  ← Your username
+# WorkingDirectory=/home/itdev/repo/keycloak-ha-active-passive-docker  ← Your path
+# ExecStart=/bin/bash /home/itdev/repo/keycloak-ha-active-passive-docker/scripts/auto-failover.sh
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable service (start on boot)
+sudo systemctl enable keycloak-failover
+
+# Start service
+sudo systemctl start keycloak-failover
+
+# Check status
+sudo systemctl status keycloak-failover
+```
+
+4. **View logs:**
+```bash
+# Follow logs in real-time
+sudo journalctl -u keycloak-failover -f
+
+# View recent logs
+sudo journalctl -u keycloak-failover -n 50
+```
+
+5. **Stop/disable service:**
+```bash
+# Stop service
+sudo systemctl stop keycloak-failover
+
+# Disable (don't start on boot)
+sudo systemctl disable keycloak-failover
+```
+
+**Failover behavior:**
+```
+Primary DOWN → 15 seconds detection → Script starts replica → 30-60s startup
+Total downtime: ~30-45 seconds
+```
+
+**Service configuration:**
+The service monitors primary every 5 seconds and starts replica after 3 consecutive failures (15 seconds). You can customize these values in `scripts/auto-failover.sh`:
+
+```bash
+CHECK_INTERVAL=5        # Check every 5 seconds
+FAILURE_THRESHOLD=3     # Start replica after 3 failures
+```
+
+#### Option 3: Manual Start (Simple but Slower)
+
+**Setup:**
+Replica Keycloak is stopped by default, started manually during failover.
+
+**Advantages:**
+- ✅ Lowest resource usage
+- ✅ Simple setup
+- ✅ Clear separation of roles
+
+**Disadvantages:**
+- ❌ Requires manual intervention
+- ❌ Longer downtime (~45-75 seconds)
+- ❌ Not suitable for production
+
+**How to use:**
+```bash
+# When primary fails, start replica manually
+docker compose -f docker-compose-replica.yml --profile manual up -d keycloak-replica
+```
+
+**Failover behavior:**
+```
+Primary DOWN → Manual detection → Manual start → 30-60s startup
+Total downtime: ~45-75 seconds (depends on response time)
+```
+
+### Comparison of Failover Options
+
+| Aspect | Always Running | Auto-Start Service | Manual Start |
+|--------|---------------|-------------------|--------------|
+| **Downtime** | ~15-20s | ~30-45s | ~45-75s |
+| **Manual Work** | None | Setup once | Every failover |
+| **Resource Usage** | High | Low | Low |
+| **Complexity** | Simple | Medium | Simple |
+| **Production Ready** | ✅ Yes | ✅ Yes | ⚠️ Testing only |
+| **Recommended For** | Production | Production | Development |
+
 ### When to Failover
 
 Perform a failover when:
@@ -520,7 +706,7 @@ Perform a failover when:
 - Planned maintenance on primary server
 - Primary server performance degradation
 
-### Failover Steps
+### Manual Failover Steps (If Not Using Auto-Failover)
 
 #### 1. Stop Primary Server (if possible)
 
@@ -529,7 +715,17 @@ Perform a failover when:
 docker compose -f docker-compose-primary.yml down
 ```
 
-#### 2. Promote Replica to Primary
+#### 2. Start Replica Keycloak (if not already running)
+
+```bash
+# On Server B
+docker compose -f docker-compose-replica.yml up -d keycloak-replica
+
+# Wait for ready
+docker logs -f keycloak-replica
+```
+
+#### 3. Promote Replica PostgreSQL (if needed)
 
 ```bash
 # On Server B
@@ -538,28 +734,22 @@ docker compose -f docker-compose-primary.yml down
 
 This script will:
 1. Promote the PostgreSQL replica to primary
-2. Start Keycloak on the new primary
-3. Verify services are healthy
-
-#### 3. Update DNS/Load Balancer
-
-If using HAProxy:
-- HAProxy will automatically detect the failover and route traffic to the new primary
-- No manual DNS changes needed
-
-If not using HAProxy:
-- Update your DNS records to point to Server B
-- Change A record or CNAME to Server B's IP
-- Wait for DNS propagation (TTL dependent)
+2. Verify services are healthy
 
 #### 4. Verify Failover
 
 ```bash
+# Check HAProxy stats
+curl -u admin:password http://haproxy-ip:8404/stats
+
+# Test access
+curl https://haproxy-ip/
+
 # On Server B
 ./scripts/health-check.sh
 ```
 
-Access Keycloak at the new URL to verify functionality.
+Access Keycloak at the HAProxy URL to verify functionality.
 
 ### Failback Procedure (Returning to Primary)
 
@@ -573,7 +763,7 @@ After the original primary is fixed:
 2. **When ready to failback:**
    - Repeat the failover procedure in reverse
    - Promote the original primary
-   - Update DNS/Load Balancer back to Server A
+   - HAProxy will automatically detect and switch back
 
 ## Limitations and Considerations
 
