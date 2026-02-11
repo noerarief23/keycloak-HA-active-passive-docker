@@ -7,9 +7,11 @@ services:
     hostname: haproxy-lb
     
     # For multi-server deployment, use bridge network with extra_hosts
-    # For single-server deployment, can use host network mode
+    # For single-server deployment, join Keycloak networks
     networks:
       - haproxy-network
+      - keycloak-network-primary  # Join primary network
+      - keycloak-network-replica  # Join replica network
     
     # Environment variables for stats authentication
     environment:
@@ -72,6 +74,12 @@ services:
 networks:
   haproxy-network:
     driver: bridge
+  keycloak-network-primary:
+    external: true
+    name: keycloak-network-primary
+  keycloak-network-replica:
+    external: true
+    name: keycloak-network-replica
 
 volumes:
   haproxy-socket:
