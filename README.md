@@ -1320,6 +1320,7 @@ environment:
 - **[OPERATIONS.md](OPERATIONS.md)** - Operations and maintenance
 - **[PRODUCTION-DEPLOYMENT.md](PRODUCTION-DEPLOYMENT.md)** - Production deployment guide
 - **[FAILBACK-GUIDE.md](FAILBACK-GUIDE.md)** - Detailed failback procedures after primary recovery
+- **[ACTIVE-ACTIVE-CLUSTERING.md](ACTIVE-ACTIVE-CLUSTERING.md)** - Active-Active clustering with Infinispan cache sync
 - **[HAPROXY.md](HAPROXY.md)** - HAProxy load balancer setup and troubleshooting
 - **[haproxy/README.md](haproxy/README.md)** - HAProxy directory overview
 - **[haproxy/UPGRADE-GUIDE.md](haproxy/UPGRADE-GUIDE.md)** - HAProxy upgrade procedures
