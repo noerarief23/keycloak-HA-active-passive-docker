@@ -40,9 +40,9 @@ docker ps | grep haproxy
 
 ```bash
 # Set test environment variables
-export HAPROXY_IP="192.168.1.12"  # Server C IP
-export PRIMARY_IP="192.168.1.10"   # Server A IP
-export REPLICA_IP="192.168.1.11"   # Server B IP
+export HAPROXY_IP="<haproxy-ip>"  # Server C IP
+export PRIMARY_IP="<server-a-ip>"   # Server A IP
+export REPLICA_IP="<server-b-ip>"   # Server B IP
 export STATS_USER="admin"
 export STATS_PASS="your_password"
 ```
@@ -109,7 +109,7 @@ telnet $HAPROXY_IP 5432
 
 **Expected Result:**
 ```
-Connection to 192.168.1.12 5432 port [tcp/postgresql] succeeded!
+Connection to <haproxy-ip> 5432 port [tcp/postgresql] succeeded!
 ```
 
 **Pass Criteria:**

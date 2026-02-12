@@ -144,11 +144,11 @@ HAPROXY_STATS_USER=admin
 HAPROXY_STATS_PASSWORD=your_secure_password_here
 
 # Server IP addresses
-PRIMARY_SERVER_IP=192.168.1.10    # Server A IP
-REPLICA_SERVER_IP=192.168.1.11    # Server B IP
+PRIMARY_SERVER_IP=<server-a-ip>    # Server A IP
+REPLICA_SERVER_IP=<server-b-ip>    # Server B IP
 ```
 
-**Important:** Use actual IP addresses of your servers, not localhost or 127.0.0.1.
+**Important:** Use actual IP addresses of your servers, not localhost or <your-loopback-ip>.
 
 ### Step 2: Update HAProxy Configuration
 
@@ -163,8 +163,8 @@ Key sections to verify:
 **Keycloak Backend:**
 ```
 backend keycloak_backend
-    server keycloak-primary 172.20.0.11:8080 check inter 5s fall 3 rise 2
-    server keycloak-replica 172.20.0.21:8080 check inter 5s fall 3 rise 2 backup
+    server keycloak-primary <primary-ip>:8080 check inter 5s fall 3 rise 2
+    server keycloak-replica <replica-ip>:8080 check inter 5s fall 3 rise 2 backup
 ```
 
 **PostgreSQL Backend:**
@@ -186,18 +186,18 @@ sudo ufw allow 5432/tcp  # PostgreSQL
 sudo ufw allow 8404/tcp  # Stats (restrict to admin IPs in production)
 
 # Allow outgoing to backend servers
-sudo ufw allow out to 192.168.1.10 port 8080  # Primary Keycloak
-sudo ufw allow out to 192.168.1.10 port 5432  # Primary PostgreSQL
-sudo ufw allow out to 192.168.1.11 port 8081  # Replica Keycloak
-sudo ufw allow out to 192.168.1.11 port 5433  # Replica PostgreSQL
+sudo ufw allow out to <server-a-ip> port 8080  # Primary Keycloak
+sudo ufw allow out to <server-a-ip> port 5432  # Primary PostgreSQL
+sudo ufw allow out to <server-b-ip> port 8081  # Replica Keycloak
+sudo ufw allow out to <server-b-ip> port 5433  # Replica PostgreSQL
 ```
 
 **Firewall Rules for Server A & B:**
 
 ```bash
 # Allow incoming from HAProxy only
-sudo ufw allow from 192.168.1.12 to any port 8080  # Keycloak
-sudo ufw allow from 192.168.1.12 to any port 5432  # PostgreSQL
+sudo ufw allow from <haproxy-ip> to any port 8080  # Keycloak
+sudo ufw allow from <haproxy-ip> to any port 5432  # PostgreSQL
 
 # Block direct client access (optional but recommended)
 sudo ufw deny 8080/tcp

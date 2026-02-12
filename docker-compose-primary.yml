@@ -42,7 +42,7 @@ services:
       # Connect via HAProxy for automatic database failover (recommended)
       # HAProxy will route to primary PostgreSQL by default, and automatically
       # failover to replica PostgreSQL if primary goes down
-      - KC_DB_URL=jdbc:postgresql://${HAPROXY_SERVER_IP:-172.30.7.51}:${HAPROXY_POSTGRES_PORT:-15434}/keycloak
+      - KC_DB_URL=jdbc:postgresql://${HAPROXY_SERVER_IP}:${HAPROXY_POSTGRES_PORT:-15434}/keycloak
       # For direct connection (no automatic failover), use this instead:
       # - KC_DB_URL=jdbc:postgresql://postgres-primary:5432/keycloak
       - KC_DB_USERNAME=keycloak

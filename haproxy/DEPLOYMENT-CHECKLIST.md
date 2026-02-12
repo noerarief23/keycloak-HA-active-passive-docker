@@ -91,8 +91,8 @@ HAPROXY_STATS_USER=admin
 HAPROXY_STATS_PASSWORD=your_secure_password_here
 
 # Backend server IPs (UPDATE WITH ACTUAL IPs)
-PRIMARY_SERVER_IP=192.168.1.10    # Server A IP
-REPLICA_SERVER_IP=192.168.1.11    # Server B IP
+PRIMARY_SERVER_IP=<server-a-ip>    # Server A IP
+REPLICA_SERVER_IP=<server-b-ip>    # Server B IP
 ```
 
 - [ ] `.env` file created

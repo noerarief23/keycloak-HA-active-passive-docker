@@ -80,6 +80,75 @@ This repository provides a production-ready Active/Passive High Availability set
          Streaming Replication
 ```
 
+### Database Connection Architecture (via HAProxy)
+
+**Both Keycloak instances (Primary & Replica) connect to PostgreSQL through HAProxy for automatic database failover:**
+
+```
+┌─────────────────────┐
+│  Keycloak Primary   │──┐
+│  (primary-network)  │  │
+└─────────────────────┘  │
+                         │    ┌──────────────────────┐
+                         ├───→│  HAProxy LB          │
+                         │    │  (haproxy-ip)        │
+┌─────────────────────┐  │    │  PostgreSQL Port:    │
+│  Keycloak Replica   │──┘    │  15434               │
+│  (replica-network)  │       └──────────┬───────────┘
+└─────────────────────┘                  │
+                                         │ Load Balance
+                         ┌───────────────┴───────────────┐
+                         ▼                               ▼
+             ┌───────────────────────┐       ┌───────────────────────┐
+             │  PostgreSQL Primary   │       │  PostgreSQL Replica   │
+             │  (primary-network)    │──────→│  (replica-network)    │
+             │  Status: Active       │       │  Status: Standby      │
+             └───────────────────────┘       └───────────────────────┘
+                                             Streaming Replication
+```
+
+**Key Configuration:**
+
+Both Keycloak instances use the same database connection string:
+```yaml
+KC_DB_URL=jdbc:postgresql://<haproxy-ip>:15434/keycloak
+```
+
+**How It Works:**
+
+1. **Normal Operation:**
+   - HAProxy routes all database connections to PostgreSQL Primary
+   - PostgreSQL Replica runs in standby mode (streaming replication)
+   - Both Keycloak instances can connect to the same database endpoint
+
+2. **Automatic Database Failover:**
+   - HAProxy health checks PostgreSQL Primary every 3 seconds
+   - If Primary fails 3 consecutive checks (9 seconds), marked as DOWN
+   - HAProxy automatically routes all connections to PostgreSQL Replica
+   - Keycloak instances continue working without reconfiguration
+   - Admin must manually promote replica: `./scripts/promote-replica.sh`
+
+3. **Benefits:**
+   - ✅ Zero configuration changes needed during failover
+   - ✅ Transparent failover for Keycloak
+   - ✅ Single connection string for both instances
+   - ✅ Automatic health monitoring
+   - ✅ No application restart required
+
+**Alternative Configuration (Direct Connection):**
+
+For testing or specific scenarios, you can configure Keycloak to connect directly to PostgreSQL:
+
+```yaml
+# Primary Keycloak → Primary PostgreSQL
+KC_DB_URL=jdbc:postgresql://postgres-primary:5432/keycloak
+
+# Replica Keycloak → Primary PostgreSQL (via network)
+KC_DB_URL=jdbc:postgresql://<primary-server-ip>:5434/keycloak
+```
+
+**Note:** Direct connection does NOT provide automatic database failover. Manual reconfiguration is required if the database fails.
+
 ## Features
 
 - ✅ PostgreSQL Streaming Replication
@@ -94,6 +163,8 @@ This repository provides a production-ready Active/Passive High Availability set
 - ✅ SSL/TLS termination and certificate management
 - ✅ Built-in monitoring and statistics dashboard
 - ✅ Prometheus metrics export
+- ✅ Database connection via HAProxy for automatic failover
+- ✅ Transparent database failover without application reconfiguration
 
 ## Why Use HAProxy Load Balancer?
 
@@ -422,7 +493,7 @@ Both servers allow replication connections from Docker networks:
 
 ```
 host    replication     replicator      172.16.0.0/12           md5
-host    replication     replicator      192.168.0.0/16          md5
+host    replication     replicator      <your-network>/16       md5
 ```
 
 ### Keycloak Configuration
@@ -485,7 +556,7 @@ Expected output:
 ```
  client_addr |   state   | sync_state 
 -------------+-----------+------------
- 172.20.0.20 | streaming | async
+ <replica-ip> | streaming | async
 ```
 
 ### Check Replication Lag
@@ -595,7 +666,7 @@ You should see:
 ==========================================
 Keycloak Automatic Failover Monitor
 ==========================================
-Primary: 172.30.7.51:8280
+Primary: <primary-server-ip>:8280
 Check interval: 5s
 Failure threshold: 3
 
@@ -753,17 +824,175 @@ Access Keycloak at the HAProxy URL to verify functionality.
 
 ### Failback Procedure (Returning to Primary)
 
-After the original primary is fixed:
+After primary PostgreSQL fails, replica is promoted, and primary comes back online, you have two options:
 
-1. **Rebuild the old primary as a replica:**
-   - Clear the old primary's data
-   - Reconfigure it as a replica of the current primary (former replica)
-   - Perform base backup from new primary
+#### Option 1: Keep Replica as Primary (Recommended - Simpler) ⭐
 
-2. **When ready to failback:**
-   - Repeat the failover procedure in reverse
-   - Promote the original primary
-   - HAProxy will automatically detect and switch back
+**Scenario:**
+- Old primary (Server A) failed and came back
+- Replica (Server B) is now promoted and running as primary
+- Keep Server B as the new primary permanently
+
+**Steps:**
+
+1. **Reconfigure old primary as new replica:**
+```bash
+# On Server A (old primary, now will be replica)
+cd /path/to/keycloak-ha
+
+# Stop all services
+docker compose -f docker-compose-primary.yml down
+
+# Backup old data (optional, for safety)
+sudo mv /var/lib/docker/volumes/keycloak-ha-active-passive-docker_postgres-primary-data \
+        /var/lib/docker/volumes/postgres-primary-data-backup-$(date +%Y%m%d)
+
+# Remove old data
+docker volume rm keycloak-ha-active-passive-docker_postgres-primary-data
+docker volume rm keycloak-ha-active-passive-docker_postgres-primary-archive
+
+# Update .env file - change to replica configuration
+cp .env.replica.example .env
+nano .env
+# Set PRIMARY_SERVER_IP to Server B IP (new primary)
+# Set PRIMARY_POSTGRES_PORT to Server B PostgreSQL port
+
+# Rename compose file to use replica configuration
+mv docker-compose-primary.yml docker-compose-primary.yml.backup
+cp docker-compose-replica.yml docker-compose-primary.yml
+
+# Start as replica
+docker compose -f docker-compose-primary.yml up -d postgres-primary
+```
+
+2. **Verify replication:**
+```bash
+# On Server B (new primary)
+docker exec postgres-replica psql -U postgres -c "SELECT client_addr, state FROM pg_stat_replication;"
+
+# Should show Server A connected
+```
+
+3. **Update HAProxy configuration (if needed):**
+```bash
+# Edit .env.lb
+# Swap PRIMARY_BACKEND_IP and REPLICA_BACKEND_IP if you want
+# Or keep as-is, HAProxy will route to whichever is healthy
+```
+
+**Advantages:**
+- ✅ Simpler - no data migration needed
+- ✅ Faster - no downtime
+- ✅ Safer - no risk of data loss during migration
+- ✅ Current primary (Server B) keeps running
+
+**Disadvantages:**
+- ⚠️ Role reversal - Server A is now replica, Server B is primary
+- ⚠️ May confuse documentation/naming
+
+#### Option 2: Restore Original Roles (Complex - More Downtime)
+
+**Scenario:**
+- Want Server A to be primary again
+- Requires data migration and downtime
+
+**Steps:**
+
+1. **Rebuild old primary as temporary replica:**
+```bash
+# On Server A
+./scripts/rebuild-as-replica.sh
+```
+
+2. **Wait for replication to catch up:**
+```bash
+# On Server A - check replication lag
+docker exec postgres-primary psql -U postgres -c \
+  "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) AS lag_seconds;"
+
+# Wait until lag < 1 second
+```
+
+3. **Perform coordinated switchback:**
+```bash
+# Step 1: Stop Keycloak on both servers (maintenance window)
+docker compose -f docker-compose-primary.yml stop keycloak-primary
+docker compose -f docker-compose-replica.yml stop keycloak-replica
+
+# Step 2: Promote Server A (old primary)
+# On Server A
+./scripts/promote-replica.sh
+
+# Step 3: Reconfigure Server B as replica
+# On Server B
+docker compose -f docker-compose-replica.yml down
+docker volume rm postgres-replica-data
+# Update .env to point to Server A
+docker compose -f docker-compose-replica.yml up -d postgres-replica
+
+# Step 4: Start Keycloak services
+docker compose -f docker-compose-primary.yml start keycloak-primary
+docker compose -f docker-compose-replica.yml start keycloak-replica
+
+# Step 5: Verify
+./scripts/verify-replication.sh
+```
+
+**Advantages:**
+- ✅ Original roles restored
+- ✅ Consistent with documentation
+
+**Disadvantages:**
+- ❌ Requires maintenance window (downtime)
+- ❌ More complex procedure
+- ❌ Risk of errors during migration
+- ❌ Takes longer to complete
+
+#### Option 3: Run Both as Independent Primaries (Not Recommended)
+
+**Warning:** This creates a split-brain scenario and will cause data inconsistency. DO NOT USE in production.
+
+### Comparison: Failback Options
+
+| Aspect | Keep Replica as Primary | Restore Original Roles |
+|--------|------------------------|------------------------|
+| **Downtime** | None | 5-15 minutes |
+| **Complexity** | Low | High |
+| **Risk** | Low | Medium |
+| **Data Loss Risk** | None | Low (if done correctly) |
+| **Time Required** | 10-15 minutes | 30-60 minutes |
+| **Recommended For** | Production | Testing/Development |
+
+### Recommended Approach
+
+**For Production:** Use Option 1 (Keep Replica as Primary)
+- Minimal risk and downtime
+- Simple procedure
+- Can perform during business hours
+
+**For Testing/Development:** Use Option 2 if you need consistent server roles
+- Acceptable downtime
+- Good practice for disaster recovery drills
+
+### Preventing Future Issues
+
+After failback, consider:
+
+1. **Root cause analysis:**
+   - Why did primary fail?
+   - Fix underlying issues (hardware, network, etc.)
+
+2. **Monitoring improvements:**
+   - Add alerts for early warning signs
+   - Monitor disk space, CPU, memory
+
+3. **Documentation updates:**
+   - Document which server is currently primary
+   - Update runbooks with current configuration
+
+4. **Regular testing:**
+   - Schedule quarterly failover drills
+   - Practice both failover and failback procedures
 
 ## Limitations and Considerations
 
@@ -1090,8 +1319,10 @@ environment:
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
 - **[OPERATIONS.md](OPERATIONS.md)** - Operations and maintenance
 - **[PRODUCTION-DEPLOYMENT.md](PRODUCTION-DEPLOYMENT.md)** - Production deployment guide
+- **[FAILBACK-GUIDE.md](FAILBACK-GUIDE.md)** - Detailed failback procedures after primary recovery
 - **[HAPROXY.md](HAPROXY.md)** - HAProxy load balancer setup and troubleshooting
 - **[haproxy/README.md](haproxy/README.md)** - HAProxy directory overview
+- **[haproxy/UPGRADE-GUIDE.md](haproxy/UPGRADE-GUIDE.md)** - HAProxy upgrade procedures
 - **[haproxy/TESTING-GUIDE.md](haproxy/TESTING-GUIDE.md)** - HAProxy testing procedures
 - **[haproxy/QUICK-REFERENCE.md](haproxy/QUICK-REFERENCE.md)** - HAProxy command reference
 - **[haproxy/DEPLOYMENT-CHECKLIST.md](haproxy/DEPLOYMENT-CHECKLIST.md)** - HAProxy deployment checklist
@@ -1102,6 +1333,8 @@ environment:
 - `scripts/health-check.sh` - Check health of all services
 - `scripts/verify-replication.sh` - Verify replication is working
 - `scripts/promote-replica.sh` - Promote replica to primary during failover
+- `scripts/rebuild-as-replica.sh` - Rebuild failed primary as new replica
+- `scripts/auto-failover.sh` - Automatic failover monitoring service
 
 **HAProxy Scripts:**
 - `haproxy/scripts/deploy-haproxy.sh` - Automated HAProxy deployment
@@ -1141,12 +1374,20 @@ This project is provided as-is for educational and production use.
 
 ## Version History
 
+- **v1.1.0** - HAProxy upgrade and enhanced documentation
+  - HAProxy upgraded to 3.3.2 (from 2.9)
+  - Added database connection architecture documentation
+  - Added comprehensive failback procedures (FAILBACK-GUIDE.md)
+  - Added rebuild-as-replica.sh script
+  - Added HAProxy upgrade guide and automation script
+  - Enhanced failover documentation with detailed scenarios
+
 - **v1.0.0** - Initial release with Active/Passive architecture
   - PostgreSQL 16 streaming replication
   - Keycloak 26.5.2
   - Docker Compose setup
   - Automated scripts for management and failover
-  - HAProxy load balancer support
+  - HAProxy 2.9 load balancer support
   - SSL/TLS termination
   - Comprehensive monitoring and health checks
 

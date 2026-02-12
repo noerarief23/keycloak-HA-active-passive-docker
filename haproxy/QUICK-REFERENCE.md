@@ -93,8 +93,8 @@ HAPROXY_STATS_USER=admin
 HAPROXY_STATS_PASSWORD=your_password
 
 # Backend servers
-PRIMARY_SERVER_IP=192.168.1.10
-REPLICA_SERVER_IP=192.168.1.11
+PRIMARY_SERVER_IP=<server-a-ip>
+REPLICA_SERVER_IP=<server-b-ip>
 ```
 
 ## Health Check Status
@@ -126,8 +126,8 @@ docker logs haproxy-lb
 ### Backends showing DOWN
 ```bash
 # Check backend connectivity
-ping 192.168.1.10
-telnet 192.168.1.10 8080
+ping <server-a-ip>
+telnet <server-a-ip> 8080
 
 # Check backend services
 docker ps | grep keycloak
@@ -206,7 +206,7 @@ docker exec haproxy-lb kill -HUP 1
 nano haproxy/haproxy.cfg
 
 # Add server line:
-# server new-server 192.168.1.12:8080 check inter 5s fall 3 rise 2
+# server new-server <new-server-ip>:8080 check inter 5s fall 3 rise 2
 
 # 2. Validate and reload
 ./haproxy/scripts/validate-config.sh

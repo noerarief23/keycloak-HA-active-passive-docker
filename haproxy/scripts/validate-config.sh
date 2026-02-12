@@ -23,8 +23,8 @@ if [ -f .env ]; then
     source .env
 fi
 
-PRIMARY_SERVER_IP="${PRIMARY_SERVER_IP:-192.168.1.10}"
-REPLICA_SERVER_IP="${REPLICA_SERVER_IP:-192.168.1.11}"
+PRIMARY_SERVER_IP="${PRIMARY_SERVER_IP:-<server-a-ip>}"
+REPLICA_SERVER_IP="${REPLICA_SERVER_IP:-<server-b-ip>}"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}HAProxy Configuration Validation${NC}"
