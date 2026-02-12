@@ -56,6 +56,9 @@ services:
       - KC_METRICS_ENABLED=true
       - KC_PROXY=${KC_PROXY:-edge}
       - KC_PROXY_HEADERS=${KC_PROXY_HEADERS:-xforwarded}
+      # Disable clustering for Active/Passive setup
+      - KC_CACHE=local
+      - KC_CACHE_STACK=local
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - JAVA_OPTS_APPEND=-Djava.net.preferIPv4Stack=true
